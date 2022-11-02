@@ -241,9 +241,9 @@ class Protocol:
             length=32,
             salt=None,
             info=b'handshake data',
-        ).derive(key)       
+        ).derive(key)
         self.session_key = derived_key
-
+        # This gives the correct length key
 
     # Encrypting messages
     # TODO: IMPLEMENT ENCRYPTION WITH THE SESSION KEY (ALSO INCLUDE ANY NECESSARY INFO IN THE ENCRYPTED MESSAGE FOR INTEGRITY PROTECTION)
@@ -268,6 +268,18 @@ class Protocol:
         print(self.session_key)
         print(self.iv)
 
+        # Hash verification, Integrity check
+        hash_func = hashes.Hash(hashes.SHA256())
+        hash_func.update(cipher_text)
+        hash_value_calculated = hash_func.finalize()
+
+        print(cipher_text)
+        cipher_text = hash_value_calculated + self.iv + cipher_text
+
+        print(hash_value_calculated)
+        print(self.iv)
+        print(cipher_text)
+
         return b64encode(cipher_text).decode('utf-8')
 
 
@@ -282,6 +294,23 @@ class Protocol:
         plain_text = cipher_text
         return plain_text
       else:
+        cipher_text = b64decode(cipher_text.decode().encode("utf-8"))
+        hash_value = cipher_text[:32]
+        self.iv = cipher_text[32:48]
+        cipher_text = cipher_text[48:]
+
+        print(hash_value)
+        print(self.iv)
+        print(cipher_text)
+
+        # Hash verification, Integrity check
+        hash_func = hashes.Hash(hashes.SHA256())
+        hash_func.update(cipher_text)
+        hash_value_calculated = hash_func.finalize()
+
+        if hash_value != hash_value_calculated:
+            return "Error: Integrity compromised"
+
         print(str(type(cipher_text)) + " type of cipher_text de")
         print("decrypt message")
         # iv = None # TODO figure out what iv we are using here
@@ -290,7 +319,12 @@ class Protocol:
         cipher = Cipher(algorithms.AES(self.session_key), modes.CTR(self.iv))
         decryptor = cipher.decryptor()
         print("274")
-        plain_text = decryptor.update(b64decode(cipher_text.decode().encode("utf-8"))) + decryptor.finalize()
+        # plain_text = decryptor.update(b64decode(cipher_text.decode().encode("utf-8"))) + decryptor.finalize()
+        plain_text = decryptor.update(cipher_text) + decryptor.finalize()
         print(str(type(plain_text)) + " type of plaintext de")
         print("decryted")
+
+
+
+
         return plain_text
